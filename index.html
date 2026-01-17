@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MTF Titan-1 | Off The Books</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root{
+ --bg:#0b0f14;
+ --panel:#121821;
+ --panel2:#0f141c;
+ --line:#1f2a38;
+ --text:#e6e9ee;
+ --muted:#9aa4b2;
+ --blue:#4aa3ff;
+ --red:#d24b4b;
+ --green:#3fbf7f;
+}
+*{box-sizing:border-box;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif}
+body{margin:0;height:100vh;background:radial-gradient(circle at top,#17202c,#070a0f);color:var(--text);overflow:hidden}
+
+/* BACKGROUND */
+.bg{position:fixed;inset:0;background:linear-gradient(to right,rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(to bottom,rgba(255,255,255,.02) 1px,transparent 1px);background-size:80px 80px;opacity:.35;pointer-events:none}
+
+/* LOGIN */
+#login{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:5}
+.login-box{width:520px;background:var(--panel);border:1px solid var(--line);padding:28px}
+.login-title{text-align:center;letter-spacing:2px;font-weight:600}
+.login-sub{text-align:center;font-size:12px;color:var(--muted);margin-top:6px}
+.fake-inputs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.fake-input{background:#0c1118;border:1px solid var(--line);padding:10px;font-size:13px;color:var(--muted)}
+.terminal{margin-top:18px;font-family:monospace;font-size:13px;color:var(--muted);min-height:110px}
+
+/* FINGERPRINT */
+.fingerprint-wrap{margin-top:20px;display:flex;justify-content:center}
+.fingerprint{width:90px;height:120px;border:2px solid #ccc;border-radius:10px;position:relative;overflow:hidden;color:#ccc;font-size:48px;display:flex;align-items:center;justify-content:center;transition:.6s}
+.scan-line{position:absolute;left:0;right:0;height:4px;background:var(--blue);top:-10px;opacity:0}
+.fingerprint.scanning{border-color:var(--blue);color:var(--blue)}
+.fingerprint.scanning .scan-line{opacity:1;animation:scan 1.2s linear infinite}
+.fingerprint.granted{border-color:var(--green);color:var(--green)}
+@keyframes scan{from{top:-10px}to{top:130px}}
+
+/* APP */
+#app{display:none;height:100%;padding:20px}
+.panel{height:100%;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);display:flex}
+
+/* SIDEBAR */
+.sidebar{width:260px;border-right:1px solid var(--line);padding:18px;display:flex;flex-direction:column;gap:10px}
+.side-btn{background:#0c1118;border:1px solid var(--line);color:var(--muted);padding:10px;text-align:left;cursor:pointer}
+.side-btn:hover{color:var(--text)}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column}
+.header{padding:14px 18px;border-bottom:1px solid var(--line)}
+.header-title{font-weight:600;letter-spacing:1.4px}
+.header-status{margin-top:6px;font-size:12px;color:var(--muted)}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px}
+
+.content{flex:1;padding:18px;overflow-y:auto}
+.section{display:none}
+.section.active{display:block}
+
+/* Redaction hover glitch */
+.redact:hover{
+ filter:brightness(2.5);
+ animation-duration:.7s;
+}
+
+/* Footer network bars */
+.net-bars{
+ display:flex;
+ gap:3px;
+ margin-left:10px;
+}
+.net-bars span{
+ width:4px;
+ height:12px;
+ background:var(--green);
+ opacity:.3;
+ animation:net 1.4s infinite;
+}
+.net-bars span:nth-child(2){animation-delay:.2s}
+.net-bars span:nth-child(3){animation-delay:.4s}
+@keyframes net{
+ 0%,100%{opacity:.2}
+ 50%{opacity:.9}
+}
+
+/* REDACTION */
+.redact{display:inline-block;width:80px;height:14px;background:linear-gradient(90deg,#111,#F00,#111);background-size:200% 100%;animation:redact 1.5s linear infinite}
+@keyframes redact{from{background-position:0}to{background-position:200%}}
+
+/* DEPLOYMENT */
+.site{display:flex;align-items:center;gap:10px;margin:8px 0}
+.dot{width:10px;height:10px;border-radius:50%}
+.dot.blue{background:var(--blue)}
+.dot.red{background:var(--red)}
+
+/* FOOTER */
+.footer{border-top:1px solid var(--line);padding:8px 16px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+
+/* BREACH */
+#breach{position:fixed;inset:0;background:#6b0000;color:#fff;display:none;align-items:center;justify-content:center;font-size:22px;letter-spacing:2px;z-index:20}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<div id="breach">[!] BREACH DETECTED — ALL USERS REMOVED [!]</div>
+
+<div id="login">
+ <div class="login-box">
+  <div class="login-title">[SCP.RK.NET // ACCESS TERMINAL]</div>
+  <div class="login-sub">Automated Authentication</div>
+
+  <div class="fake-inputs">
+   <div class="fake-input">USER: ID//-1532 </div>
+   <div class="fake-input">PASSCODE: ██-█████</div>
+  </div>
+
+  <div class="terminal" id="terminal"></div>
+
+  <div class="fingerprint-wrap">
+   <div class="fingerprint" id="finger">☷<div class="scan-line"></div></div>
+
+  </div>
+ </div>
+</div>
+<div id="app">
+ <div class="panel">
+
+  <div class="sidebar">
+   <button class="side-btn" onclick="openTab('overview')">Operational Overview</button>
+   <button class="side-btn" onclick="openTab('command')">Chain Of Command</button>
+   <button class="side-btn" onclick="openTab('deploy')">Deployment Sites</button>
+   <button class="side-btn" onclick="openTab('division')">Divisions</button>
+   <button class="side-btn" onclick="restricted()">Restricted</button>
+
+  </div>
+  <div class="main">
+   <div class="header">
+    <div class="header-title">⋄ MOBILE TASK FORCE : TITAN-1 ⋄</div>
+    <div class="header-status">OPERATIONAL JURISDICTION : MULTI-SITE TASK FORCE</div>
+    <div class="header-status">DESIGNATION : "OFF THE BOOKS"</div>
+    <div class="header-status">AUTHORIZATION LEVEL : <span class="redact"></span></div>
+    <div class="header-status"><span class="status-dot"></span>STATUS : ACTIVE</div>
+   </div>
+
+   <div class="content">
+
+    <div id="overview" class="section active">
+     <p>
+Mobile Task Force Titan-1, designated “Off The Books,” is a specialized SCP Foundation unit established for the primary purpose of <span class="redact"></span> and the protection of High-Value Assets deemed critical to Foundation operations.<br><br>
+In addition to primary protection assignments, Titan-1 is authorized to assume a variety of secondary security responsibilities during periods in which no VIP or High-Value personnel are present on-site. These duties include, but are not limited to, on-site security, checkpoint control, and routine patrol operations. Further tasking details remain <span class="redact"></span>.<br><br>
+Titan-1 is also cleared for direct action operations involving hostile Groups of Interest, including <span class="redact"></span> and the acquisition of High-Priority Targets associated with said groups. Engagement authorization is granted under <span class="redact"></span> protocols.<br><br>
+Operational assessments indicate that Titan-1’s combat effectiveness exceeds that of standard Mobile Task Forces. The unit specializes in unconventional warfare, subterfuge, and psychological intimidation methodologies designed to <span class="redact"></span> counter hostile elements prior to raid or assault operations.
+     </p>
+    </div>
+
+    <div id="command" class="section">
+<pre>
+<div class="header-title">HIGH COMMAND (HC)</div>
+Commanding Officer - Faction Leader [⊛]
+Executive Field Chief - Co-Faction Leader [⨹]
+Field Of Operations Executive
+Executive Officer
+General
+Colonel
+
+<div class="header-title">HIGH RANKING (HR)</div>
+Chief Warrant Officer
+Commander
+Deputy Commander
+Captain
+Deputy Captain
+
+<div class="header-title">MIDDLE RANKING (NCO)</div>
+Lieutenant
+Second Lieutenant
+Field Supervisor
+Operations Supervisor
+Chief Sergeant
+Sergeant Major
+Operations Sergeant
+Combat Sergeant
+
+<div class="header-title">LOW RANKING (LR)</div>
+Master Corporal
+Corporal
+Lance Corporal
+Private First Class
+Senior Operative
+Operative
+Junior Operative
+Initiate
+</pre>
+    </div>
+
+    <div id="division" class="section">
+ <pre>
+ Tactical Assault Command (TACOM)
+Primary assault, direct‑action, and high‑risk interdiction authority assigned to titan‑1.
+Division Leader (DL): ["Triniboss"] Cool_kidjnk 
+<div class="site"><span class="status-dot"></span>STATUS : ACTIVE</div>
+
+ Heavy Weaponry and Armours Division (H-WAD)
+Main Division that equips their operatives with heavy machine guns, and or juggernauts.
+Division Leader (DL): ["Ace"] liamgoalkeeper 
+<div class="site"><span class="status-dot"></span>STATUS : ACTIVE</div>
+
+Office of Evaluation and Regulation Affairs (OERA)
+Disciplinary Division for Titan-1, making sure no shows misconduct or misbehaves.
+ • Sub‑Division: Correctional Office of Regulatory Affairs (CORA)
+  – Handles corrective regulatory actions, internal compliance audits, and discipline enforcement.
+Division Leader (DL): [T-1] Executive FC | HAFABJ671
+<<div class="site"><span class="status-dot"></span>STATUS : ACTIVE</div>
+ 
+Central Authority Support Division (CASD)
+Elite Division within Titan-1, usually in close-communications with <span class="redact"></span> and Ethics Commitee, Site Directorate,
+and is the designated close-protection division assigned to these bodys.
+<div class="site"><span class="status-dot"></span>STATUS : ACTIVE</div>
+ </pre>
+</div>
+
+
+
+
+    <div id="deploy" class="section">
+     <p><strong>Dot information:</strong> <span class="dot blue"></span>Blue = Official &nbsp; <span class="dot red"></span> Red = Unofficial</p>
+     <pre>
+     <div class="site"><span class="dot blue"></span> Site-101</div>
+     <div class="site"><span class="dot blue"></span> Site-105 | "Ashen Hold"</div>
+     <div class="site"><span class="dot blue"></span> Site Aether</div>
+     <div class="site"><span class="dot blue"></span> Site Mirage</div>
+     <div class="site"><span class="dot blue"></span> Area 32</div>
+
+     <div class="site"><span class="dot red"></span> Site 416</div>
+     <div class="site"><span class="dot red"></span> Site Noctum</div>
+     </pre>
+    </div>
+
+   </div>
+
+<div class="footer"> <div>[SCP.RK.NET // SECURED ACCESS TERMINAL | CURRENT CLEARANCE LEVEL: 4]</div> <div style="display:flex;align-items:center"> &nbsp;|&nbsp; <a href="https://discord.gg/Gk8Ndt9N" target="_blank" rel="noopener noreferrer" class="footer-link"> TITAN-1 COMMUNICATIONS SERVER </div> </a> <div id="clock"></div> <div class="net-bars"><span></span><span></span><span></span></div> </div> </div> </div> </div> </div>
+
+
+  </div>
+ </div>
+</div>
+
+<script>
+const terminal=document.getElementById('terminal');
+const finger=document.getElementById('finger');
+const lines=[
+ 'Initializing secure uplink...',
+ 'Secure uplink intialized!',
+ 'Verifying credentials...',
+ 'Credentials Verified!',
+ 'Biometric authorization required...',
+ '.', '.', '.',
+ 'Biometric Scan Complete! - GRANTED ACCESS'
+];
+let i=0;
+function boot(){
+ if(i<lines.length){terminal.innerHTML+=lines[i++]+'<br>';setTimeout(boot,600);}else{
+  finger.classList.add('scanning');
+  setTimeout(()=>{
+   finger.classList.remove('scanning');
+   finger.classList.add('granted');
+   setTimeout(()=>{login.style.display='none';app.style.display='block';},700);
+  },1800);
+ }
+}
+boot();
+
+function openTab(id){document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+function restricted(){
+ const pass=prompt('ENTER RESTRICTED PASSCODE');
+ if(pass==='Titan1_1532'){
+  alert('ACCESS GRANTED');
+  alert('[UNKNOWN ERROR DETECTED, PLEASE EXIT THIS RESTRICTED DATA]')
+ }else{alert('ACCESS DENIED');}
+}
+
+function clock(){document.getElementById('clock').textContent=new Date().toLocaleTimeString();}
+setInterval(clock,1000);clock();
+
+setInterval(()=>{
+ if(Math.floor(Math.random()*15)===0){
+  document.getElementById('breach').style.display='flex';
+  setTimeout(()=>location.reload(),2500);
+ }
+},60000);
+</script>
+</body>
+</html>
