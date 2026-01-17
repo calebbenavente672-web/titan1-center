@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MTF Titan-1 Archive</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root{
+  --bg:#0b0e13;
+  --panel:#11161e;
+  --line:#1f2a36;
+  --text:#e6e8eb;
+  --muted:#9aa3af;
+  --accent:#cfd6df;
+}
+
+*{box-sizing:border-box;font-family:Segoe UI,Roboto,Arial}
+
+body{
+  margin:0;
+  background:radial-gradient(circle at top,#141a24,#07090d);
+  color:var(--text);
+  height:100vh;
+  overflow:hidden;
+}
+
+/* BACKGROUND LAYERS */
+.bg-grid{
+  position:fixed;
+  inset:0;
+  background:
+    linear-gradient(to right,rgba(255,255,255,.03) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(255,255,255,.03) 1px,transparent 1px);
+  background-size:80px 80px;
+  opacity:.25;
+  pointer-events:none;
+}
+
+.bg-particles{
+  position:fixed;
+  inset:0;
+  background-image:radial-gradient(circle,#fff 1px,transparent 1px);
+  background-size:120px 120px;
+  opacity:.04;
+  animation:drift 60s linear infinite;
+  pointer-events:none;
+}
+
+@keyframes drift{
+  from{transform:translateY(0)}
+  to{transform:translateY(-120px)}
+}
+
+.scanlines{
+  position:fixed;
+  inset:0;
+  background:linear-gradient(
+    to bottom,
+    rgba(255,255,255,.04) 1px,
+    transparent 1px
+  );
+  background-size:100% 3px;
+  pointer-events:none;
+}
+
+/* LOGIN */
+#login{
+  position:absolute;
+  inset:0;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:5;
+}
+
+.login-box{
+  width:440px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  padding:24px;
+}
+
+.login-title{
+  text-align:center;
+  font-weight:600;
+  letter-spacing:2px;
+}
+
+.login-shield{
+  margin:12px auto;
+  width:48px;
+  height:48px;
+  border:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:20px;
+  opacity:.8;
+}
+
+.terminal{
+  margin-top:16px;
+  font-family:monospace;
+  font-size:13px;
+  color:var(--muted);
+  min-height:140px;
+  line-height:1.6;
+}
+
+.bio{
+  margin-top:12px;
+  height:0;
+  overflow:hidden;
+  transition:height .6s ease;
+}
+
+.bio-bar{
+  height:8px;
+  background:linear-gradient(90deg,#555,#aaa,#555);
+  animation:scan 1.2s linear infinite;
+}
+
+@keyframes scan{
+  from{background-position:0}
+  to{background-position:200%}
+}
+
+/* APP */
+#app{
+  display:none;
+  height:100%;
+  padding:30px;
+}
+
+.panel{
+  height:100%;
+  background:linear-gradient(180deg,#10151d,#0a0e14);
+  border:1px solid var(--line);
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+}
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.nav button{
+  background:none;
+  border:none;
+  color:var(--muted);
+  margin-left:16px;
+  cursor:pointer;
+}
+
+.nav button:hover{color:var(--text)}
+
+.content{
+  margin-top:20px;
+  flex:1;
+  overflow-y:auto;
+}
+
+.section{display:none}
+.section.active{display:block}
+
+.redacted{
+  background:#000;
+  color:#000;
+}
+
+input{
+  background:#0c1118;
+  border:1px solid var(--line);
+  color:var(--text);
+  padding:8px;
+}
+
+/* GLITCH TEXT */
+.glitch{
+  position:relative;
+}
+.glitch::before,
+.glitch::after{
+  content:attr(data-text);
+  position:absolute;
+  left:0;
+  top:0;
+  opacity:.5;
+}
+.glitch::before{
+  color:#f55;
+  transform:translate(-1px,0);
+}
+.glitch::after{
+  color:#5ff;
+  transform:translate(1px,0);
+}
+</style>
+</head>
+
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-particles"></div>
+<div class="scanlines"></div>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-box">
+    <div class="login-title glitch" data-text="FOUNDATION ACCESS NODE">
+      FOUNDATION ACCESS NODE
+    </div>
+
+    <div class="login-shield">⛨</div>
+
+    <div class="terminal" id="terminal"></div>
+
+    <div class="bio" id="bio">
+      <div class="bio-bar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="panel">
+    <div class="header">
+      <div class="glitch" data-text="MTF TITAN-1 ARCHIVE">MTF TITAN-1 ARCHIVE</div>
+      <div class="nav">
+        <button onclick="openTab('overview')">Overview</button>
+        <button onclick="openTab('command')">Chain of Command</button>
+        <button onclick="openTab('personnel')">Personnel</button>
+        <button onclick="openTab('restricted')">Restricted</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div id="overview" class="section active">
+        <p>Operational overview placeholder.</p>
+        <p class="redacted">███████████████████████</p>
+      </div>
+
+      <div id="command" class="section">
+<pre>
+Commanding Officer
+Executive Field Chief
+Field Of Operations Executive
+Executive Officer
+General
+Colonel
+
+Chief Warrant Officer
+Commander
+Deputy Commander
+Captain
+Deputy Captain
+
+Lieutenant
+Second Lieutenant
+Field Supervisor
+Operations Supervisor
+Chief Sergeant
+Sergeant Major
+Operations Sergeant
+Combat Sergeant
+
+Master Corporal
+Corporal
+Lance Corporal
+Private First Class
+Senior Operative
+Operative
+Junior Operative
+Initiate
+</pre>
+      </div>
+
+      <div id="personnel" class="section">
+        <p>Personnel database syncing...</p>
+        <pre>
+[DB] Querying node 7...
+[DB] Retrieving personnel index...
+[DB] Status: ACTIVE
+        </pre>
+      </div>
+
+      <div id="restricted" class="section">
+        <p>Restricted Access Channel</p>
+        <input id="code" placeholder="Access Code">
+        <button onclick="checkCode()">Submit</button>
+        <p id="result"></p>
+        <div id="restrictedData" style="display:none">
+          <p>Restricted content placeholder.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const terminal=document.getElementById("terminal");
+const bio=document.getElementById("bio");
+
+const bootLines=[
+"Initializing secure channel...",
+"Injecting operative credentials...",
+"Operative ID: RX-"+Math.floor(Math.random()*9000),
+"Password stream accepted.",
+"Biometric verification required..."
+];
+
+let step=0;
+function boot(){
+  if(step<bootLines.length){
+    terminal.innerHTML+=bootLines[step++]+"<br>";
+    setTimeout(boot,600);
+  }else{
+    bio.style.height="18px";
+    setTimeout(()=>{
+      document.getElementById("login").style.display="none";
+      document.getElementById("app").style.display="block";
+    },1800);
+  }
+}
+boot();
+
+function openTab(id){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+function checkCode(){
+  const v=document.getElementById("code").value;
+  if(v==="Titan1_1532"){
+    document.getElementById("result").textContent="ACCESS GRANTED";
+    document.getElementById("restrictedData").style.display="block";
+  }else{
+    document.getElementById("result").textContent="ACCESS DENIED";
+  }
+}
+</script>
+
+</body>
+</html>
