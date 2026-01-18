@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TITAN-1 | COMMAND INTERFACE</title>
+<style>
+    :root {
+        --bg: #05070a; --panel: #0d1117; --line: #1f2937;
+        --text: #c9d1d9; --muted: #6e7681; --blue: #58a6ff;
+        --red: #f85149; --green: #3fb950; --yellow: #d29922;
+        --orange: #ff7b72;
+    }
+
+    * { box-sizing: border-box; font-family: 'Courier New', monospace; }
+    body { margin: 0; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+    /* PHASE 0: VISUALS */
+    .overlay { position: fixed; inset: 0; pointer-events: none; z-index: 999; background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.05) 50%); background-size: 100% 4px; opacity: 0.2; }
+    .grid { position: fixed; inset: 0; opacity: 0.1; pointer-events: none; background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 40px 40px; }
+
+    /* UI ANOMALIES */
+    @keyframes jitter { 0% { transform: translate(0,0); } 10% { transform: translate(-1px, 1px); } 20% { transform: translate(1px, -1px); } 100% { transform: translate(0,0); } }
+    .unstable { animation: jitter 0.15s infinite; filter: contrast(1.2) brightness(1.1); }
+    
+    .wipe-active { animation: flash-red 0.2s infinite !important; }
+    @keyframes flash-red { 0%, 100% { background: #500; } 50% { background: #f00; } }
+
+    /* AUTHENTICATION LAYER */
+    #auth-layer { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 1000; background: var(--bg); }
+    #passcode-gate { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; z-index: 1100; background: rgba(5,7,10,0.95); }
+    .auth-box { width: 450px; border: 1px solid var(--line); padding: 30px; background: var(--panel); text-align: center; box-shadow: 0 0 50px rgba(0,0,0,1); }
+
+    /* APP STRUCTURE */
+    #app { display: none; height: 100vh; flex-direction: column; padding: 10px; }
+    .wrapper { display: flex; flex: 1; border: 1px solid var(--line); background: var(--panel); overflow: hidden; }
+
+    /* HEADER */
+    .main-header { padding: 15px 20px; border-bottom: 2px solid var(--line); background: rgba(0,0,0,0.3); }
+    .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .title-block h1 { margin: 0; font-size: 20px; letter-spacing: 3px; color: var(--text); }
+    .title-block p { margin: 0; font-size: 10px; color: var(--blue); font-weight: bold; letter-spacing: 2px; }
+    .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+    /* SIDEBAR */
+    .sidebar { width: 260px; border-right: 1px solid var(--line); background: #090c10; padding: 15px; display: flex; flex-direction: column; overflow-y: auto; }
+    .nav-group { margin-bottom: 15px; }
+    .nav-label { font-size: 9px; color: var(--muted); padding: 5px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #1f293755; }
+    .nav-btn { width: 100%; background: transparent; border: none; color: var(--muted); text-align: left; padding: 8px 12px; cursor: pointer; font-size: 11px; }
+    .nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .nav-btn.active { color: var(--blue); border-left: 2px solid var(--blue); background: rgba(88, 166, 255, 0.05); }
+
+    /* CONTENT AREA */
+    .content-area { flex: 1; overflow-y: auto; padding: 25px; background: radial-gradient(circle at center, #0d1117 0%, #080a0e 100%); }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* TERMINAL STYLING (ADDED) */
+    #term-wrap { background: #000; border: 1px solid var(--line); height: 450px; display: flex; flex-direction: column; padding: 15px; }
+    #term-output { flex: 1; overflow-y: auto; margin-bottom: 10px; font-size: 12px; color: var(--green); line-height: 1.4; }
+    #term-input { background: #111; border: 1px solid #333; color: #fff; padding: 10px; width: 100%; outline: none; }
+    .bio-scan-box { width: 100px; height: 120px; border: 2px solid var(--blue); margin: 20px auto; position: relative; display: flex; align-items: center; justify-content: center; font-size: 40px; cursor: pointer; background: rgba(88, 166, 255, 0.1); }
+    .bio-scan-box::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--blue); animation: scan 1.5s infinite linear; }
+    @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+
+    /* GLOBAL OVERVIEW SPECIAL STYLING */
+    .global-header { border-bottom: 2px solid var(--green); margin-bottom: 20px; padding-bottom: 10px; }
+    .global-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 100%; }
+    .monitor-box { border: 1px solid var(--line); background: rgba(0,0,0,0.5); padding: 15px; position: relative; overflow: hidden; }
+    .data-card { border: 1px solid #333; padding: 10px; margin-bottom: 10px; font-size: 11px; background: #000; }
+    
+    /* Interactive Charts Animation */
+    @keyframes barGrow { from { height: 10%; } to { height: var(--h); } }
+    .chart-container { display: flex; align-items: flex-end; gap: 5px; height: 60px; margin-top: 10px; border-bottom: 1px solid #333; }
+    .bar { width: 15px; background: var(--blue); animation: barGrow 1s ease-out forwards; }
+    
+    @keyframes blink-red { 0%, 100% { background: var(--red); box-shadow: 0 0 10px var(--red); } 50% { background: transparent; box-shadow: none; } }
+    .status-alert-xk { animation: blink-red 0.5s infinite; color: white; padding: 5px; text-align: center; }
+
+    /* DATA STYLING */
+    .div-card { border: 1px solid var(--line); padding: 15px; margin-bottom: 15px; background: rgba(0,0,0,0.2); }
+    .div-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 5px; margin-bottom: 10px; }
+    .status-tag { font-size: 10px; padding: 2px 6px; border-radius: 2px; font-weight: bold; }
+    .status-tag.active { border: 1px solid var(--green); color: var(--green); }
+    .status-tag.inactive { border: 1px solid var(--red); color: var(--red); }
+
+    .rank-cat { color: var(--yellow); font-size: 12px; font-weight: bold; margin: 15px 0 5px 0; border-left: 3px solid var(--yellow); padding-left: 10px; text-transform: uppercase; }
+    .rank-item { padding: 3px 15px; font-size: 12px; color: var(--muted); border-bottom: 1px solid #1f293722; }
+
+    .redact { background: #000; color: #000; cursor: help; }
+    .redact:hover { color: #333; }
+</style>
+</head>
+<body id="main-body">
+
+<div class="overlay"></div>
+<div class="grid"></div>
+
+<div id="auth-layer">
+    <div class="auth-box">
+        <h2 style="letter-spacing:8px; margin:0;">TITAN-1</h2>
+        <p style="font-size:10px; color:var(--muted);">SECURE NETWORK ARCHIVE</p>
+        <div id="boot-text" style="font-size:11px; color:var(--blue); height:80px; margin:20px 0; text-align:left; border:1px solid var(--line); padding:10px; overflow:hidden;"></div>
+        <button id="login-btn" style="background:transparent; border:1px solid var(--blue); color:var(--blue); padding:10px 20px; cursor:pointer; width:100%;">ACCESS TERMINAL</button>
+    </div>
+</div>
+
+<div id="passcode-gate">
+    <div class="auth-box" style="border-color: var(--red);">
+        <h3 style="color: var(--red); letter-spacing: 2px;">GLOBAL COMMAND ACCESS</h3>
+        <p style="font-size: 10px; color: var(--muted);">ENTER TITAN-1 GLOBAL KEY</p>
+        <input type="password" id="pass-input" style="background: #000; border: 1px solid var(--line); color: #fff; width: 100%; padding: 10px; text-align: center; margin-bottom: 15px;">
+        <button onclick="unlockGlobal()" style="background: var(--red); border: none; color: #fff; padding: 10px; width: 100%; cursor: pointer; font-weight: bold;">AUTHORIZE</button>
+        <p onclick="closeGate()" style="font-size: 9px; color: var(--muted); cursor: pointer; margin-top: 10px;">CANCEL</p>
+    </div>
+</div>
+
+<div id="app">
+    <div class="wrapper">
+        <div class="sidebar">
+            <div class="nav-group">
+                <div class="nav-label">Direct Command</div>
+                <button class="nav-btn" onclick="openTab(this, 'terminal-page')">[ TERMINAL UPLINK ]</button>
+            </div>
+            <div class="nav-group">
+                <div class="nav-label">Strategic Overview</div>
+                <button class="nav-btn" id="global-nav-link" onclick="triggerGate(this)" style="color: var(--orange); font-weight: bold;">[ GLOBAL OVERVIEW ]</button>
+            </div>
+            <div class="nav-group">
+                <div class="nav-label">Core Directives</div>
+                <button class="nav-btn active" onclick="openTab(this, 'mandate')">Operational Mandate</button>
+                <button class="nav-btn" onclick="openTab(this, 'command')">Chain of Command</button>
+                <button class="nav-btn" onclick="openTab(this, 'divisions')">Active Divisions</button>
+            </div>
+            <div class="nav-group">
+                <div class="nav-label">Intelligence</div>
+                <button class="nav-btn" onclick="openTab(this, 'logs')">Operational Logs</button>
+                <button class="nav-btn" onclick="openTab(this, 'restricted')">Restricted Workspace</button>
+            </div>
+            <div class="nav-group">
+                <div class="nav-label">System Performance</div>
+                <button class="nav-btn" onclick="openTab(this, 'status')">Network Status</button>
+            </div>
+            <div style="margin-top:auto; font-size:9px; color:var(--muted); padding:10px; border-top:1px solid var(--line);">
+                ENCRYPTION: RSA-4096<br>
+                UPLINK: SITE-01 [STABLE]
+            </div>
+        </div>
+
+        <div style="flex:1; display:flex; flex-direction:column;">
+            <header class="main-header" id="dynamic-header">
+                <div class="header-top">
+                    <div class="title-block">
+                        <h1 id="h-main-title">MOBILE TASK FORCE : TITAN-1</h1>
+                        <p id="h-sub-title">DESIGNATED : "OFF THE BOOKS"</p>
+                    </div>
+                    <div class="header-status">
+                        <div id="h-status-line"><span class="dot"></span> STATUS : <span style="color:var(--green)">ACTIVE</span></div>
+                        <div style="font-size:10px; color:var(--muted); margin-top:4px;" id="clock"></div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-area">
+
+                <div id="terminal-page" class="page">
+                    <h3 style="color:var(--green);">DIRECT TERMINAL UPLINK</h3>
+                    <div id="term-wrap">
+                        <div id="term-output">
+                            <div>TITAN-OS [Version 4.0.1]</div>
+                            <div>(c) Foundation Secure Network. Type 'help' for command list.</div>
+                        </div>
+                        <input type="text" id="term-input" placeholder=">> INPUT COMMAND" autocomplete="off">
+                    </div>
+                    <div id="bio-ui" style="display:none; text-align:center; margin-top:20px; border:1px solid var(--line); padding:20px;">
+                        <div style="color:var(--blue); margin-bottom:10px;">BIOMETRIC VERIFICATION REQUIRED</div>
+                        <div class="bio-scan-box" id="fingerprint">✋</div>
+                        <div id="bio-msg" style="font-size:10px; color:var(--muted);">PLACE HAND TO SCAN</div>
+                    </div>
+                </div>
+
+                <div id="global-page" class="page">
+                    <div class="global-header">
+                        <div style="font-size: 16px; font-weight: bold; letter-spacing: 2px;">Mobile Task Force : Data Center</div>
+                        <div style="font-size: 10px; color: var(--muted);">Type : Archive | Status : <span style="color: var(--green);"><span class="dot"></span> Active</span></div>
+                    </div>
+
+                    <div class="global-grid">
+                        <div class="monitor-box">
+                            <div style="font-size: 10px; color: var(--blue); margin-bottom: 10px;">FIELD_REPORTS: WORLDWIDE</div>
+                            <div id="global-ticker" style="height: 350px; overflow: hidden;"></div>
+                        </div>
+
+                        <div class="monitor-box">
+                            <div id="g-threat-container" style="padding: 15px; border: 1px solid #333; margin-bottom: 20px;">
+                                <div style="font-size: 10px; color: var(--muted);">GLOBAL STATUS</div>
+                                <div id="g-status-display" style="font-size: 20px; font-weight: bold; margin-top: 5px;">NORMAL OPERATIONS</div>
+                            </div>
+                            
+                            <div style="font-size: 10px; color: var(--muted);">NETWORK TRAFFIC ANALYSIS</div>
+                            <div class="chart-container" id="chart-bars"></div>
+                            
+                            <div style="margin-top: 20px; font-size: 11px;">
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1f2937; padding: 5px 0;">
+                                    <span>SITE-19 UPLINK</span><span style="color: var(--green);">[ENCRYPTED]</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1f2937; padding: 5px 0;">
+                                    <span>O5-COUNCIL RELAY</span><span style="color: var(--green);">[CONNECTED]</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1f2937; padding: 5px 0;">
+                                    <span>WARP-GATES</span><span style="color: var(--red);">[STANDBY]</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="mandate" class="page active">
+                    <h3 style="color:var(--blue); border-bottom: 1px solid var(--line); padding-bottom:10px;">OPERATIONAL MANDATE</h3>
+                    <div style="font-size:13px; line-height:1.7;">
+                        Mobile Task Force Titan-1, designated “Off The Books,” is a specialized SCP Foundation unit established for the primary purpose of <span class="redact">███████████</span> and the protection of High-Value Assets deemed critical to Foundation operations.<br><br>
+                        In addition to primary protection assignments, Titan-1 is authorized to assume a variety of secondary security responsibilities during periods in which no VIP or High-Value personnel are present on-site. These duties include, but are not limited to, on-site security, checkpoint control, and routine patrol operations. Further tasking details remain <span class="redact">CLASSIFIED LEVEL 5</span>.<br><br>
+                        Titan-1 is also cleared for direct action operations involving hostile Groups of Interest, including <span class="redact">THE CHAOS INSURGENCY</span> and the acquisition of High-Priority Targets associated with said groups. Engagement authorization is granted under <span class="redact">PROTOCOL ZERO</span> protocols.<br><br>
+                        Operational assessments indicate that Titan-1’s combat effectiveness exceeds that of standard Mobile Task Forces. The unit specializes in unconventional warfare, subterfuge, and psychological intimidation methodologies designed to <span class="redact">NEUTRALIZE</span> counter hostile elements prior to raid or assault operations.
+                    </div>
+                </div>
+
+                <div id="command" class="page">
+                    <h3 style="color:var(--blue);">CHAIN OF COMMAND</h3>
+                    <div class="rank-section"><div class="rank-cat">HIGH COMMAND (HC)</div><div class="rank-item">Commanding Officer - Faction Leader [⊛]</div><div class="rank-item">Executive Field Chief - Co-Faction Leader [⨹]</div><div class="rank-item">Field Of Operations Executive</div><div class="rank-item">Executive Officer</div><div class="rank-item">General</div><div class="rank-item">Colonel</div></div>
+                    <div class="rank-section"><div class="rank-cat" style="color:var(--blue); border-color:var(--blue);">HIGH RANKING (HR)</div><div class="rank-item">Chief Warrant Officer</div><div class="rank-item">Commander</div><div class="rank-item">Deputy Commander</div><div class="rank-item">Captain</div><div class="rank-item">Deputy Captain</div></div>
+                    <div class="rank-section"><div class="rank-cat" style="color:var(--green); border-color:var(--green);">MIDDLE RANKING (NCO)</div><div class="rank-item">Lieutenant</div><div class="rank-item">Second Lieutenant</div><div class="rank-item">Field Supervisor</div><div class="rank-item">Operations Supervisor</div><div class="rank-item">Chief Sergeant</div><div class="rank-item">Sergeant Major</div><div class="rank-item">Operations Sergeant</div><div class="rank-item">Combat Sergeant</div></div>
+                    <div class="rank-section"><div class="rank-cat" style="color:var(--muted); border-color:var(--muted);">LOW RANKING (LR)</div><div class="rank-item">Master Corporal</div><div class="rank-item">Corporal</div><div class="rank-item">Lance Corporal</div><div class="rank-item">Private First Class</div><div class="rank-item">Senior Operative</div><div class="rank-item">Operative</div><div class="rank-item">Junior Operative</div><div class="rank-item">Initiate</div></div>
+                </div>
+
+                <div id="divisions" class="page">
+                    <h3 style="color:var(--blue);">ACTIVE DIVISIONS</h3>
+                    <div class="div-card"><div class="div-header"><span style="font-weight:bold;">Tactical Assault Command (TACOM)</span><span class="status-tag active">STATUS : ACTIVE</span></div><div style="font-size:11px;">Primary assault, direct-action, and high-risk interdiction authority assigned to Titan-1.</div><div style="font-size:10px; color:var(--muted); margin-top:5px;">DL: ["Triniboss"] Cool_kidjnk</div></div>
+                    <div class="div-card"><div class="div-header"><span style="font-weight:bold;">Heavy Weaponry and Armours Division (H-WAD)</span><span class="status-tag active">STATUS : ACTIVE</span></div><div style="font-size:11px;">Main Division that equips operatives with heavy weapons and armored platforms.</div><div style="font-size:10px; color:var(--muted); margin-top:5px;">DL: ["Ace"] liamgoalkeeper</div></div>
+                    <div class="div-card"><div class="div-header"><span style="font-weight:bold;">Office of Evaluation and Regulation Affairs (OERA)</span><span class="status-tag active">STATUS : ACTIVE</span></div><div style="font-size:11px;">Disciplinary and compliance oversight division. Sub-Division: CORA</div><div style="font-size:10px; color:var(--muted); margin-top:5px;">DL: Executive FC | HAFABJ671</div></div>
+                    <div class="div-card"><div class="div-header"><span style="font-weight:bold;">Central Authority Support Division (CASD)</span><span class="status-tag active">STATUS : ACTIVE</span></div><div style="font-size:11px;">Close-protection and liaison division assigned to <span class="redact">████</span> and Site Directorates.</div></div>
+                </div>
+
+                <div id="logs" class="page">
+                    <h3 style="color:var(--blue); border-bottom: 1px solid var(--line); padding-bottom:10px;">OPERATIONAL LOG FEED</h3>
+                    <div id="log-feed" style="height: 500px; overflow-y: auto;"></div>
+                </div>
+
+                <div id="restricted" class="page">
+                    <h3 style="color:var(--red);">RESTRICTED NOTES</h3>
+                    <textarea id="notes" style="width:100%; height:300px; background:rgba(0,0,0,0.5); color:var(--text); border:1px solid var(--line); padding:15px;" placeholder="Input secure data..."></textarea>
+                </div>
+
+                <div id="status" class="page">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        <div class="div-card">
+                            <div style="font-size:10px; color:var(--muted);">CORE INTEGRITY</div>
+                            <div id="integrity-val" style="font-size:24px;">100%</div>
+                        </div>
+                        <div class="div-card">
+                            <div style="font-size:10px; color:var(--muted);">THREAT LEVEL</div>
+                            <div id="threat-val" style="font-size:24px; color:var(--green);">EUCLID</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- TERMINAL DATA DATABASE ---
+const db = [
+    { n: "Sarah Miller", d: "1992-04-12", p: "London, UK", a: 33, b: "Site-19 Security Lead.", s: "ALIVE" },
+    { n: "Viktor Drago", d: "1985-11-20", p: "Moscow, RU", a: 40, b: "Ex-GOC Operative.", s: "ALIVE" },
+    { n: "James Chen", d: "1970-01-05", p: "Beijing, CN", a: 56, b: "Foundation Archivist.", s: "DECEASED" },
+    { n: "Elena Rossi", d: "1998-07-15", p: "Rome, IT", a: 27, b: "Anomalous Linguist.", s: "ALIVE" },
+    { n: "Hafabj671", d: "REDACTED", p: "Site-01", a: "??", b: "Division Lead: OERA.", s: "ALIVE" },
+    { n: "Cool_kidjnk", d: "REDACTED", p: "Site-01", a: "??", b: "Division Lead: TACOM.", s: "ALIVE" },
+    { n: "Liamgoalkeeper", d: "REDACTED", p: "Site-01", a: "??", b: "Division Lead: H-WAD.", s: "ALIVE" },
+    { n: "Agent Carter", d: "1988-03-30", p: "New York", a: 37, b: "Deep cover specialist.", s: "DECEASED" },
+    { n: "Dr. Bright", d: "REDACTED", p: "REDACTED", a: "NA", b: "Keep away from chainsaws.", s: "ALIVE" },
+    { n: "O5-1", d: "REDACTED", p: "REDACTED", a: "??", b: "The Founder.", s: "ALIVE" }
+];
+
+let isWipePending = false;
+const tOut = document.getElementById('term-output');
+const tIn = document.getElementById('term-input');
+
+function tPrint(msg, col="var(--green)") {
+    const d = document.createElement('div');
+    d.style.color = col;
+    d.innerHTML = `> ${msg}`;
+    tOut.appendChild(d);
+    tOut.scrollTop = tOut.scrollHeight;
+}
+
+tIn.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') {
+        const cmd = tIn.value.trim().toLowerCase();
+        tIn.value = '';
+        
+        if(isWipePending) {
+            if(cmd === 'continue') {
+                document.getElementById('main-body').classList.add('wipe-active');
+                tOut.innerHTML = '';
+                let p = 0;
+                setInterval(() => {
+                    p += 2;
+                    tPrint(`DELETING SYSTEM... ${p}%`, "white");
+                    if(p >= 100) location.reload();
+                }, 50);
+            } else {
+                isWipePending = false;
+                tPrint("WIPE ABORTED.", "white");
+            }
+            return;
+        }
+
+        if(cmd === 'help') {
+            tPrint("COMMANDS: scan, terminal status, current operative health, global status, information grab, data//wipe");
+        } else if (cmd === 'scan') {
+            tPrint("SCANNING NETWORK...");
+            setTimeout(() => tPrint("NO THREATS DETECTED."), 1000);
+        } else if (cmd === 'terminal status') {
+            tPrint("TERMINAL: ONLINE. ENCRYPTION: MAX.");
+        } else if (cmd === 'current operative health') {
+            document.getElementById('bio-ui').style.display = 'block';
+            tPrint("INITIALIZING BIOMETRIC SCANNER...");
+        } else if (cmd === 'global status') {
+            tPrint("ACCESS DENIED: USE SIDEBAR NAVIGATION.", "var(--red)");
+        } else if (cmd === 'information grab') {
+            tPrint("FOUND 10 FILES:", "var(--blue)");
+            tPrint(db.map(x=>x.n).join(", "));
+            tPrint("TYPE A NAME TO ACCESS FILE.");
+        } else if (cmd === 'data//wipe') {
+            tPrint("ENTER PASSCODE:", "var(--red)");
+        } else if (cmd === 'lltitan1') {
+            isWipePending = true;
+            tPrint("WARNING: SYSTEM WIPE INITIATED. TYPE 'CONTINUE' TO CONFIRM.", "var(--orange)");
+        } else {
+            const p = db.find(x => x.n.toLowerCase() === cmd);
+            if(p) {
+                tPrint(`NAME: ${p.n} | STATUS: ${p.s}`, p.s === "ALIVE" ? "var(--green)" : "var(--red)");
+                tPrint(`ROLE: ${p.b}`);
+            } else {
+                tPrint("UNKNOWN COMMAND.", "var(--red)");
+            }
+        }
+    }
+});
+
+document.getElementById('fingerprint').onclick = () => {
+    const m = document.getElementById('bio-msg');
+    m.innerText = "READING...";
+    m.style.color = "var(--yellow)";
+    setTimeout(() => {
+        m.innerText = "IDENTITY VERIFIED";
+        m.style.color = "var(--green)";
+        tPrint("BIOMETRICS MATCHED: HEALTH 100% | COMBAT READY", "var(--blue)");
+    }, 1500);
+};
+
+// --- GLOBAL DATA GENERATOR ---
+const gLocations = ["New York, USA", "London, UK", "Tokyo, JP", "Moscow, RU", "Site-19", "Site-01", "Beijing, CN"];
+const gTypes = ["INTEL_PACKET", "BREACH_ALRT", "BIO_SCAN", "SATELLITE_LINK"];
+const gInfo = ["Containment stable.", "Atmospheric variance detected.", "Unusual energy spikes.", "Node synchronized.", "Biometric match confirmed."];
+
+function generateGlobalTicker() {
+    const ticker = document.getElementById('global-ticker');
+    if(!ticker) return;
+    const time = new Date().toLocaleTimeString();
+    const loc = gLocations[Math.floor(Math.random()*gLocations.length)];
+    const typ = gTypes[Math.floor(Math.random()*gTypes.length)];
+    const inf = gInfo[Math.floor(Math.random()*gInfo.length)];
+
+    const card = document.createElement('div');
+    card.className = "data-card";
+    card.innerHTML = `
+        <div style="color:var(--blue)">[${time}] [${typ}] [${loc}]</div>
+        <div style="margin-top:5px">${inf}</div>
+        <div style="color:var(--muted); font-size:9px">SOURCE: MTF_TITAN_NODE_${Math.floor(Math.random()*999)}</div>
+    `;
+    ticker.prepend(card);
+    if(ticker.childNodes.length > 5) ticker.removeChild(ticker.lastChild);
+}
+
+// --- GLOBAL STATUS ROLLER ---
+function updateGlobalStatus() {
+    const disp = document.getElementById('g-status-display');
+    const roll = Math.random() * 100;
+    disp.classList.remove('status-alert-xk');
+    
+    if(roll < 60) {
+        disp.innerText = "NORMAL OPERATIONS"; disp.style.color = "var(--green)";
+    } else if (roll < 80) {
+        disp.innerText = "THREAT LEVEL INCREASE"; disp.style.color = "var(--yellow)";
+    } else if (roll < 95) {
+        disp.innerText = "MULTI-SITE SCP BREACH"; disp.style.color = "var(--orange)";
+    } else {
+        disp.innerText = "XK-CLASS END OF THE WORLD"; disp.classList.add('status-alert-xk');
+    }
+}
+
+// --- CHART GENERATOR ---
+function updateCharts() {
+    const container = document.getElementById('chart-bars');
+    if(!container) return;
+    container.innerHTML = "";
+    for(let i=0; i<10; i++) {
+        const h = Math.floor(Math.random()*80) + 20;
+        const bar = document.createElement('div');
+        bar.className = "bar";
+        bar.style.setProperty('--h', h + "%");
+        container.appendChild(bar);
+    }
+}
+
+// --- PASSCODE LOGIC ---
+const GLOBAL_PASS = "Titan1_1532_Global_CommandKC";
+let pendingTab = null;
+
+function triggerGate(btn) {
+    pendingTab = btn;
+    document.getElementById('passcode-gate').style.display = 'flex';
+}
+
+function closeGate() {
+    document.getElementById('passcode-gate').style.display = 'none';
+}
+
+function unlockGlobal() {
+    const val = document.getElementById('pass-input').value;
+    if(val === GLOBAL_PASS) {
+        document.getElementById('passcode-gate').style.display = 'none';
+        openTab(pendingTab, 'global-page');
+        
+        // Change Header Visuals for Global Overview
+        document.getElementById('h-main-title').innerText = "GLOBAL OVERVIEW : DATA CENTER";
+        document.getElementById('h-sub-title').innerText = "TYPE: STRATEGIC ARCHIVE";
+        
+        // Start Global Loops
+        updateCharts();
+        setInterval(generateGlobalTicker, 3000);
+        setInterval(updateGlobalStatus, 5000);
+        setInterval(updateCharts, 2000);
+    } else {
+        alert("INVALID KEY");
+        document.getElementById('pass-input').value = "";
+    }
+}
+
+// --- ORIGINAL LOGGING DATA ---
+const alertLevels = ["INFO", "ADVISORY", "WARNING", "CRITICAL", "REDACTED"];
+const logTypes = ["FIELD_OP", "CONTAINMENT", "SIGNAL_INT", "BIOMETRIC", "MEMETIC"];
+const dataPools = {
+    ops: ["Unit Insertion", "Asset Extraction", "Neutralization Protocol", "Surveillance Sweep", "Deep-Cover Stealth"],
+    entities: ["SCP-682", "SCP-173", "SCP-3007", "Unknown Class-V Entity", "Chaos Insurgency Cell", "GOC Strike Team"],
+    sites: ["Site-19", "Site-01", "Black-Site 4", "Sector-12", "Area-354"],
+    details: [
+        "Reality anchors reporting 40% variance in local spacetime.",
+        "Memetic kill agents deployed at all perimeter exits.",
+        "Target successfully moved to Heavy Containment Wing.",
+        "Unauthorized data packet intercepted from external node.",
+        "Casualty reports: {VAL} operatives lost. Mission continues.",
+        "Standard Scranton Railings showing signs of structural fatigue."
+    ]
+};
+
+function generateComplexLog() {
+    const logFeed = document.getElementById('log-feed');
+    if (!logFeed) return;
+    const time = new Date().toLocaleTimeString();
+    const alert = alertLevels[Math.floor(Math.random() * alertLevels.length)];
+    const type = logTypes[Math.floor(Math.random() * logTypes.length)];
+    let color = "var(--green)";
+    let border = "var(--line)";
+    if(alert === "CRITICAL" || alert === "REDACTED") { color = "var(--red)"; border = "var(--red)"; }
+    else if (alert === "WARNING") { color = "var(--yellow)"; border = "var(--yellow)"; }
+    const logBlock = document.createElement('div');
+    logBlock.style.cssText = `margin-bottom: 20px; border-left: 3px solid ${border}; padding-left: 15px; background: rgba(0,0,0,0.2); padding-top: 8px; padding-bottom: 8px;`;
+    const header = document.createElement('div');
+    header.style.cssText = `font-weight: bold; font-size: 11px; margin-bottom: 5px; color: ${color}; letter-spacing:1px;`;
+    header.innerText = `[ ${time} ] [ ${alert} ] [ ${type} ]`;
+    const info = document.createElement('div');
+    info.style.cssText = "font-size: 12px; margin-bottom: 4px; color: var(--text);";
+    const op = dataPools.ops[Math.floor(Math.random()*dataPools.ops.length)];
+    const ent = dataPools.entities[Math.floor(Math.random()*dataPools.entities.length)];
+    info.innerText = `(OPERATION: ${op}) — (TARGET: ${ent})`;
+    const addtl = document.createElement('div');
+    addtl.style.cssText = "font-size: 10px; color: var(--muted);";
+    let detail = dataPools.details[Math.floor(Math.random()*dataPools.details.length)];
+    detail = detail.replace("{VAL}", Math.floor(Math.random()*12));
+    const site = dataPools.sites[Math.floor(Math.random()*dataPools.sites.length)];
+    addtl.innerText = `LOCATION: ${site} >> ${detail}`;
+    logBlock.appendChild(header);
+    logBlock.appendChild(info);
+    logBlock.appendChild(addtl);
+    logFeed.prepend(logBlock);
+    if(logFeed.childNodes.length > 15) { logFeed.removeChild(logFeed.lastChild); }
+}
+
+// --- CORE LOGIC ---
+const bootText = document.getElementById('boot-text');
+const bootLines = ["> PHASE 0: CRT_GRID_LINK...", "> PHASE 1: AUTH_BIOMETRICS...", "> PHASE 2: C&C_CORE_SYNC...", "> PHASE 3: INTEL_ARCHIVE_LOAD...", "> UPLINK SUCCESSFUL. WELCOME AGENT."];
+let b = 0;
+function runBoot() {
+    if(b < bootLines.length) { bootText.innerHTML += bootLines[b++] + "<br>"; setTimeout(runBoot, 400); }
+}
+runBoot();
+
+document.getElementById('login-btn').onclick = () => {
+    document.getElementById('auth-layer').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    initSystem();
+};
+
+function openTab(btn, tabId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+    
+    // Reset Header if leaving Global
+    if(tabId !== 'global-page') {
+        document.getElementById('h-main-title').innerText = "MOBILE TASK FORCE : TITAN-1";
+        document.getElementById('h-sub-title').innerText = "DESIGNATED : \"OFF THE BOOKS\"";
+    }
+}
+
+let integrity = 100;
+function initSystem() {
+    setInterval(() => { document.getElementById('clock').innerText = "SESSION: " + new Date().toLocaleTimeString(); }, 1000);
+    generateComplexLog(); 
+    setInterval(generateComplexLog, 4000);
+    setInterval(() => {
+        integrity -= 0.1;
+        document.getElementById('integrity-val').innerText = Math.floor(integrity) + "%";
+        if(integrity < 80 && Math.random() > 0.9) {
+            document.body.classList.add('unstable');
+            setTimeout(() => document.body.classList.remove('unstable'), 150);
+        }
+    }, 3000);
+    const notesArea = document.getElementById('notes');
+    notesArea.value = localStorage.getItem('titan_notes') || "";
+    notesArea.oninput = (e) => localStorage.setItem('titan_notes', e.target.value);
+}
+</script>
+</body>
+</html>
